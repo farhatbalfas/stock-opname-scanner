@@ -1,0 +1,192 @@
+
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <title>Scanner Stock Opname 3PL</title>
+
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+
+  <style>
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: 20px;
+      background: #111827;
+      color: white;
+      font-family: Arial, sans-serif;
+      text-align: center;
+    }
+
+    h2 { margin: 12px 0; }
+
+    #reader {
+      width: 100%;
+      max-width: 500px;
+      margin: 20px auto;
+      overflow: hidden;
+      border-radius: 12px;
+    }
+
+    #pesan {
+      margin: 18px auto;
+      max-width: 500px;
+      padding: 14px;
+      border-radius: 8px;
+      background: #374151;
+      line-height: 1.5;
+    }
+
+    .error { background: #991b1b !important; }
+    .success { background: #166534 !important; }
+
+    button {
+      padding: 13px 24px;
+      border: 0;
+      border-radius: 8px;
+      background: #dc2626;
+      color: white;
+      font-size: 16px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+
+<body>
+
+  <h2>Scanner Barcode</h2>
+  <p>Arahkan kamera ke barcode produk</p>
+
+  <div id="reader"></div>
+
+  <div id="pesan">Menyiapkan kamera...</div>
+
+  <button onclick="tutupScanner()">Tutup Kamera</button>
+
+  <script>
+    let scanner = null;
+    let sedangScan = false;
+
+    const pesan = document.getElementById("pesan");
+
+    function tampilkanPesan(teks, tipe) {
+      pesan.textContent = teks;
+      pesan.className = tipe || "";
+    }
+
+    async function mulaiScanner() {
+      try {
+        if (typeof Html5Qrcode === "undefined") {
+          throw new Error("Library scanner gagal dimuat.");
+        }
+
+        tampilkanPesan("Mendeteksi kamera...", "");
+
+        const cameras = await Html5Qrcode.getCameras();
+
+        if (!cameras || cameras.length === 0) {
+          throw new Error("Kamera tidak ditemukan.");
+        }
+
+        const belakang = cameras.find(camera =>
+          /back|rear|environment|belakang/i.test(camera.label || "")
+        );
+
+        const kamera = belakang || cameras[cameras.length - 1];
+
+        scanner = new Html5Qrcode("reader");
+
+        const formats = [
+          Html5QrcodeSupportedFormats.EAN_13,
+          Html5QrcodeSupportedFormats.EAN_8,
+          Html5QrcodeSupportedFormats.UPC_A,
+          Html5QrcodeSupportedFormats.UPC_E,
+          Html5QrcodeSupportedFormats.CODE_128,
+          Html5QrcodeSupportedFormats.CODE_39,
+          Html5QrcodeSupportedFormats.ITF,
+          Html5QrcodeSupportedFormats.CODABAR
+        ];
+
+        tampilkanPesan("Membuka kamera belakang...", "");
+
+        await scanner.start(
+          kamera.id,
+          {
+            fps: 10,
+            qrbox: { width: 280, height: 130 },
+            formatsToSupport: formats
+          },
+          async function(barcode) {
+            if (sedangScan) return;
+
+            sedangScan = true;
+
+            tampilkanPesan("Barcode terbaca: " + barcode, "success");
+
+            try {
+              await scanner.stop();
+              scanner.clear();
+
+              if (window.opener && !window.opener.closed) {
+                window.opener.postMessage(
+                  {
+                    type: "STOCK_OPNAME_BARCODE",
+                    barcode: barcode
+                  },
+                  "*"
+                );
+
+                tampilkanPesan("Berhasil! Kembali ke halaman stok opname...", "success");
+
+                window.opener.focus();
+
+                setTimeout(function() {
+                  window.close();
+                }, 500);
+
+              } else {
+                tampilkanPesan(
+                  "Halaman stok opname tidak ditemukan. Barcode: " + barcode,
+                  "error"
+                );
+              }
+
+            } catch (error) {
+              tampilkanPesan("Gagal mengirim barcode: " + error.message, "error");
+            }
+          },
+          function() {}
+        );
+
+        tampilkanPesan("Kamera aktif. Arahkan ke barcode produk.", "success");
+
+      } catch (error) {
+        tampilkanPesan(
+          "Kamera gagal dibuka (" +
+          (error.name || "Error") +
+          "): " +
+          (error.message || error),
+          "error"
+        );
+      }
+    }
+
+    async function tutupScanner() {
+      try {
+        if (scanner && scanner.isScanning) {
+          await scanner.stop();
+          scanner.clear();
+        }
+      } catch (error) {}
+
+      window.close();
+    }
+
+    window.addEventListener("load", mulaiScanner);
+  </script>
+
+</body>
+</html>
