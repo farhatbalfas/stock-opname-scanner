@@ -4,7 +4,6 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-
   <title>Scanner Stock Opname 3PL</title>
 
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
@@ -58,7 +57,7 @@
 <body>
 
   <h2>Scanner Barcode</h2>
-  <p>Arahkan kamera ke barcode produk</p>
+  <p id="petunjuk">Arahkan kamera ke barcode produk</p>
 
   <div id="reader"></div>
 
@@ -71,6 +70,18 @@
     let sedangScan = false;
 
     const pesan = document.getElementById("pesan");
+
+    // Membaca tujuan scan dari URL
+    const params = new URLSearchParams(window.location.search);
+    const purpose = params.get("purpose") || "produk";
+
+    if (purpose === "pallet") {
+      document.getElementById("petunjuk").textContent =
+        "Arahkan kamera ke barcode PALLET";
+    } else {
+      document.getElementById("petunjuk").textContent =
+        "Arahkan kamera ke barcode PRODUK";
+    }
 
     function tampilkanPesan(teks, tipe) {
       pesan.textContent = teks;
@@ -134,12 +145,16 @@
                 window.opener.postMessage(
                   {
                     type: "STOCK_OPNAME_BARCODE",
+                    purpose: purpose,
                     barcode: barcode
                   },
                   "*"
                 );
 
-                tampilkanPesan("Berhasil! Kembali ke halaman stok opname...", "success");
+                tampilkanPesan(
+                  "Berhasil! Kembali ke halaman stok opname...",
+                  "success"
+                );
 
                 window.opener.focus();
 
@@ -155,13 +170,16 @@
               }
 
             } catch (error) {
-              tampilkanPesan("Gagal mengirim barcode: " + error.message, "error");
+              tampilkanPesan(
+                "Gagal mengirim barcode: " + error.message,
+                "error"
+              );
             }
           },
           function() {}
         );
 
-        tampilkanPesan("Kamera aktif. Arahkan ke barcode produk.", "success");
+        tampilkanPesan("Kamera aktif. Arahkan ke barcode.", "success");
 
       } catch (error) {
         tampilkanPesan(
