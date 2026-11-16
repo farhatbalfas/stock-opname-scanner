@@ -4,6 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+
   <title>Login Stock Opname 3PL</title>
 
   <style>
@@ -41,6 +42,7 @@
     #status {
       margin-top: 20px;
       font-size: 14px;
+      line-height: 1.5;
       overflow-wrap: anywhere;
     }
   </style>
@@ -50,7 +52,8 @@
 
   <div class="login-box">
     <h2>Stock Opname 3PL</h2>
-    <p>Silakan login menggunakan akun Google.</p>
+
+    <p>Silakan login menggunakan akun Google yang terdaftar.</p>
 
     <div id="googleButton"></div>
 
@@ -58,9 +61,21 @@
   </div>
 
   <script>
+    const GOOGLE_CLIENT_ID =
+      "966268303906-ctqr3ivkmpmk86f2cuhbv09k4djtv6gm.apps.googleusercontent.com";
+
+    const URL_APPS_SCRIPT =
+      "https://script.google.com/macros/s/AKfycbyNGnDNsdATUeCC-Tf5kBd4M20oU_hZhioSmb3Rjyfqe2_Xg0r8Q-xRoD2JUw5CRYp3/exec";
+
+
+    /**************************************************
+     * INISIALISASI GOOGLE LOGIN
+     **************************************************/
+
     function initGoogleLogin() {
+
       google.accounts.id.initialize({
-        client_id: "966268303906-ctqr3ivkmpmk86f2cuhbv09k4djtv6gm.apps.googleusercontent.com",
+        client_id: GOOGLE_CLIENT_ID,
         callback: handleCredentialResponse
       });
 
@@ -76,25 +91,45 @@
       );
     }
 
+
+    /**************************************************
+     * SETELAH LOGIN GOOGLE BERHASIL
+     **************************************************/
+
     function handleCredentialResponse(response) {
-      try {
-        const bagian = response.credential.split(".")[1];
-        const base64 = bagian
-          .replace(/-/g, "+")
-          .replace(/_/g, "/");
 
-        const payload = JSON.parse(atob(base64));
-
-        document.getElementById("status").innerHTML =
-          "Google berhasil mengenali akun:<br><br><b>" +
-          payload.email +
-          "</b><br><br>Status: Tes login berhasil";
-
-      } catch (error) {
+      if (!response || !response.credential) {
         document.getElementById("status").textContent =
-          "Gagal membaca respons Google.";
+          "Login Google gagal. Silakan coba kembali.";
+        return;
       }
+
+      document.getElementById("googleButton").style.display = "none";
+
+      document.getElementById("status").textContent =
+        "Login Google berhasil. Sedang memverifikasi hak akses...";
+
+      // Kirim token menggunakan POST.
+      // Token tidak dimasukkan ke URL.
+      const form = document.createElement("form");
+
+      form.method = "POST";
+      form.action = URL_APPS_SCRIPT;
+      form.style.display = "none";
+
+      const input = document.createElement("input");
+
+      input.type = "hidden";
+      input.name = "id_token";
+      input.value = response.credential;
+
+      form.appendChild(input);
+
+      document.body.appendChild(form);
+
+      form.submit();
     }
+
   </script>
 
   <script
